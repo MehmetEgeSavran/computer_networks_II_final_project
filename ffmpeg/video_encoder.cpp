@@ -19,7 +19,7 @@ bool VideoEncoder::init(int width, int height, AVRational time_base) {
     enc_ctx->width = width;
     enc_ctx->height = height;
     enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-    enc_ctx->bit_rate = 400000;
+    enc_ctx->bit_rate = 3*100*1000000;
     enc_ctx->time_base = time_base;
 
     if (avcodec_open2(enc_ctx, encoder, nullptr) < 0) {
