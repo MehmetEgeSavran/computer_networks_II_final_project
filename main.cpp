@@ -1,20 +1,15 @@
 #include "video_decoder.h"
 #include "video_encoder.h"
 #include "video_redecoder.h"
+#include "ui.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
 }
 
 #include <iostream>
 #include <vector>
-
-// Screen size if you ever want to customize window
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
 
 int main() {
     std::cout << "Starting..." << std::endl;
@@ -38,28 +33,14 @@ int main() {
         return -1;
     }
 
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW." << std::endl;
+    // Use your WindowClass
+    WindowClass custom_window;
+    if (custom_window.getErrorStatus()) {
         return -1;
     }
-    GLFWwindow* window = glfwCreateWindow(
-        decoder.getWidth(), decoder.getHeight(),
-        "Video Playback", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window." << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
 
-    // Initialize GLEW
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW." << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return -1;
-    }
+    WidgetManager widget_manager;
+    MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
 
     // Set up orthographic projection matching video size
     glMatrixMode(GL_PROJECTION);
@@ -84,7 +65,6 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Create SwsContext for YUV->RGB
     SwsContext* sws_ctx = sws_getContext(
         decoder.getWidth(),
         decoder.getHeight(),
@@ -96,48 +76,33 @@ int main() {
         nullptr, nullptr, nullptr);
     if (!sws_ctx) {
         std::cerr << "Failed to create sws context." << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
         return -1;
     }
 
-    // Allocate frames
     AVFrame* frame = av_frame_alloc();
     AVFrame* decoded = av_frame_alloc();
     if (!frame || !decoded) {
         std::cerr << "Failed to allocate frames." << std::endl;
-        if (frame) av_frame_free(&frame);
-        if (decoded) av_frame_free(&decoded);
-        sws_freeContext(sws_ctx);
-        glfwDestroyWindow(window);
-        glfwTerminate();
         return -1;
     }
 
-    // Allocate RGB buffer
     const int rgb_stride = decoder.getWidth() * 3;
     const size_t rgb_buf_size = rgb_stride * decoder.getHeight();
     uint8_t* rgb_buffer = new(std::nothrow) uint8_t[rgb_buf_size];
     if (!rgb_buffer) {
         std::cerr << "Failed to allocate RGB buffer." << std::endl;
-        av_frame_free(&frame);
-        av_frame_free(&decoded);
-        sws_freeContext(sws_ctx);
-        glfwDestroyWindow(window);
-        glfwTerminate();
         return -1;
     }
 
     int frame_count = 0;
 
-    // Main loop
-    while (!glfwWindowShouldClose(window) && decoder.readFrame(frame)) {
+    while (!glfwWindowShouldClose(custom_window.getWindow()) && decoder.readFrame(frame)) {
         std::vector<uint8_t> packet_data;
         if (encoder.encodeFrame(frame, packet_data)) {
             if (redecoder.decodePacket(packet_data, decoded)) {
-                // Convert YUV to RGB
                 uint8_t* dest[4] = { rgb_buffer, nullptr, nullptr, nullptr };
                 int linesize[4] = { rgb_stride, 0, 0, 0 };
+
                 sws_scale(
                     sws_ctx,
                     decoded->data,
@@ -147,7 +112,6 @@ int main() {
                     dest,
                     linesize);
 
-                // Upload to OpenGL texture
                 glBindTexture(GL_TEXTURE_2D, tex_id);
                 glTexSubImage2D(
                     GL_TEXTURE_2D,
@@ -160,7 +124,6 @@ int main() {
                     GL_UNSIGNED_BYTE,
                     rgb_buffer);
 
-                // Draw
                 glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 glLoadIdentity();
@@ -174,7 +137,9 @@ int main() {
                 glEnd();
                 glDisable(GL_TEXTURE_2D);
 
-                glfwSwapBuffers(window);
+                widget_manager.renderAll();
+
+                glfwSwapBuffers(custom_window.getWindow());
                 glfwPollEvents();
 
                 av_frame_unref(decoded);
@@ -187,7 +152,6 @@ int main() {
         av_frame_unref(frame);
     }
 
-    // Cleanup
     delete[] rgb_buffer;
     av_frame_free(&frame);
     av_frame_free(&decoded);
@@ -196,8 +160,6 @@ int main() {
     encoder.close();
     redecoder.close();
     glDeleteTextures(1, &tex_id);
-    glfwDestroyWindow(window);
-    glfwTerminate();
 
     std::cout << "Done." << std::endl;
     return 0;

@@ -4,7 +4,8 @@ CC = g++
 # Include paths
 CFLAGS = \
     -ID:/msys64/mingw64/include \
-    -I./ffmpeg
+    -I./ffmpeg \
+    -I./interface
 
 # FFmpeg libraries
 FFMPEG_LIBS = \
@@ -29,7 +30,8 @@ SRC = \
     main.cpp \
     ffmpeg/video_decoder.cpp \
     ffmpeg/video_encoder.cpp \
-    ffmpeg/video_redecoder.cpp
+    ffmpeg/video_redecoder.cpp \
+    interface/ui.cpp
 
 # Output executable
 OUT = main.exe
