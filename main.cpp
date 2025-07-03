@@ -11,105 +11,196 @@ extern "C" {
 
 #include <iostream>
 #include <vector>
+#include <thread>
+
+// Cross-platform sockets
+#ifdef _WIN32
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
+// Helper to send all data
+bool sendAll(int sock, const uint8_t* data, int len) {
+    int sent = 0;
+    while (sent < len) {
+#ifdef _WIN32
+        int s = send(sock, (const char*)data + sent, len - sent, 0);
+#else
+        int s = send(sock, data + sent, len - sent, 0);
+#endif
+        if (s <= 0) return false;
+        sent += s;
+    }
+    return true;
+}
+
+// Helper to receive all data
+bool recvAll(int sock, uint8_t* data, int len) {
+    int recvd = 0;
+    while (recvd < len) {
+#ifdef _WIN32
+        int r = recv(sock, (char*)data + recvd, len - recvd, 0);
+#else
+        int r = recv(sock, data + recvd, len - recvd, 0);
+#endif
+        if (r <= 0) return false;
+        recvd += r;
+    }
+    return true;
+}
 
 int main() {
-    std::cout << "Starting..." << std::endl;
+#ifdef _WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
+
     avformat_network_init();
 
-    VideoDecoder decoder;
-    if (!decoder.open("D:\\visual_studio_codes\\computer_networks_final_project\\kitty.mp4")) {
-        std::cerr << "Unable to open the file." << std::endl;
-        return -1;
+    std::cout << "Server (s) or Client (c)? ";
+    char mode;
+    std::cin >> mode;
+
+    const int PORT = 5000;
+    int sock = -1;
+    int client_sock = -1;
+
+    if (mode == 's') {
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = INADDR_ANY;
+        addr.sin_port = htons(PORT);
+
+        bind(sock, (sockaddr*)&addr, sizeof(addr));
+        listen(sock, 1);
+
+        std::cout << "Waiting for connection..." << std::endl;
+        client_sock = accept(sock, nullptr, nullptr);
+        std::cout << "Client connected!" << std::endl;
+    } else {
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(PORT);
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+        std::cout << "Connecting..." << std::endl;
+        if (connect(sock, (sockaddr*)&addr, sizeof(addr)) < 0) {
+            std::cerr << "Failed to connect." << std::endl;
+            return -1;
+        }
+        std::cout << "Connected!" << std::endl;
     }
 
-    VideoEncoder encoder;
-    if (!encoder.init(decoder.getWidth(), decoder.getHeight(), decoder.getTimeBase())) {
-        std::cerr << "Unable to initialize encoder." << std::endl;
-        return -1;
-    }
+    if (mode == 's') {
+        VideoDecoder decoder;
+        if (!decoder.open("D:\\visual_studio_codes\\computer_networks_final_project\\kitty.mp4")) {
+            std::cerr << "Unable to open video." << std::endl;
+            return -1;
+        }
 
-    VideoReDecoder redecoder;
-    if (!redecoder.init(encoder.getExtradata(), encoder.getExtradataSize())) {
-        std::cerr << "Unable to initialize re-decoder." << std::endl;
-        return -1;
-    }
+        VideoEncoder encoder;
+        if (!encoder.init(decoder.getWidth(), decoder.getHeight(), decoder.getTimeBase())) {
+            std::cerr << "Unable to init encoder." << std::endl;
+            return -1;
+        }
 
-    WindowClass custom_window;
-    if (custom_window.getErrorStatus()) return -1;
+        AVFrame* frame = av_frame_alloc();
+        while (decoder.readFrame(frame)) {
+            std::vector<uint8_t> packet_data;
+            if (encoder.encodeFrame(frame, packet_data)) {
+                uint32_t size = htonl(static_cast<uint32_t>(packet_data.size()));
+                if (!sendAll(client_sock, (uint8_t*)&size, 4) ||
+                    !sendAll(client_sock, packet_data.data(), (int)packet_data.size())) {
+                    std::cerr << "Send error." << std::endl;
+                    break;
+                }
+            }
+            av_frame_unref(frame);
+        }
 
-    WidgetManager widget_manager;
-    MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
+        // Signal end
+        uint32_t zero = 0;
+        sendAll(client_sock, (uint8_t*)&zero, 4);
 
-    SwsContext* sws_ctx = sws_getContext(
-        decoder.getWidth(),
-        decoder.getHeight(),
-        AV_PIX_FMT_YUV420P,
-        decoder.getWidth(),
-        decoder.getHeight(),
-        AV_PIX_FMT_RGB24,
-        SWS_BILINEAR,
-        nullptr, nullptr, nullptr);
-    if (!sws_ctx) {
-        std::cerr << "Failed to create sws context." << std::endl;
-        return -1;
-    }
+        av_frame_free(&frame);
+        decoder.close();
+        encoder.close();
+        std::cout << "Server done." << std::endl;
 
-    AVFrame* frame = av_frame_alloc();
-    AVFrame* decoded = av_frame_alloc();
-    if (!frame || !decoded) {
-        std::cerr << "Failed to allocate frames." << std::endl;
-        return -1;
-    }
+#ifdef _WIN32
+        closesocket(sock);
+        closesocket(client_sock);
+#else
+        close(sock);
+        close(client_sock);
+#endif
+        return 0;
+    } else {
+        // Client: initialize window and decoder
+        WindowClass custom_window;
+        if (custom_window.getErrorStatus()) return -1;
 
-    const int rgb_stride = decoder.getWidth() * 3;
-    const size_t rgb_buf_size = rgb_stride * decoder.getHeight();
-    uint8_t* rgb_buffer = new(std::nothrow) uint8_t[rgb_buf_size];
-    if (!rgb_buffer) {
-        std::cerr << "Failed to allocate RGB buffer." << std::endl;
-        return -1;
-    }
+        WidgetManager widget_manager;
+        MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
 
-    // Create the VideoWidget centered and scaled
-    int win_w = 1920 * 0.85;
-    int win_h = 1080 * 0.85;
-    float scale_x = float(win_w) / decoder.getWidth();
-    float scale_y = float(win_h) / decoder.getHeight();
-    float scale = std::min(1.0f, std::min(scale_x, scale_y));
-    float draw_w = decoder.getWidth() * scale;
-    float draw_h = decoder.getHeight() * scale;
-    float offset_x = (win_w - draw_w) * 0.5f;
-    float offset_y = (win_h - draw_h) * 0.5f;
+        VideoReDecoder redecoder;
+        // Receive extradata (could be optional here—skipped for simplicity)
 
-    VideoWidget video_widget(offset_x, offset_y, draw_w, draw_h, decoder.getWidth(), decoder.getHeight());
-    widget_manager.addNewWidget(&video_widget);
+        redecoder.init(nullptr, 0);
 
-    int frame_count = 0;
+        SwsContext* sws_ctx = nullptr;
 
-    while (!glfwWindowShouldClose(custom_window.getWindow()) && decoder.readFrame(frame)) {
-        std::vector<uint8_t> packet_data;
-        if (encoder.encodeFrame(frame, packet_data)) {
-            if (redecoder.decodePacket(packet_data, decoded)) {
+        AVFrame* decoded = av_frame_alloc();
+        uint8_t* rgb_buffer = nullptr;
+        VideoWidget* video_widget = nullptr;
+
+        int frame_count = 0;
+
+        bool stop = false;
+        while (!glfwWindowShouldClose(custom_window.getWindow()) && !stop) {
+            uint32_t size_net;
+            if (!recvAll(sock, (uint8_t*)&size_net, 4)) break;
+            uint32_t size = ntohl(size_net);
+            if (size == 0) break;
+
+            std::vector<uint8_t> packet(size);
+            if (!recvAll(sock, packet.data(), size)) break;
+
+            if (redecoder.decodePacket(packet, decoded)) {
+                if (!sws_ctx) {
+                    sws_ctx = sws_getContext(
+                        decoded->width, decoded->height, (AVPixelFormat)decoded->format,
+                        decoded->width, decoded->height, AV_PIX_FMT_RGB24,
+                        SWS_BILINEAR, nullptr, nullptr, nullptr);
+                    rgb_buffer = new uint8_t[decoded->width * decoded->height * 3];
+
+                    float w = static_cast<float>(decoded->width);
+                    float h = static_cast<float>(decoded->height);
+                    video_widget = new VideoWidget(0,0,w,h, (int)w,(int)h);
+                    widget_manager.addNewWidget(video_widget);
+                }
+
                 uint8_t* dest[4] = { rgb_buffer, nullptr, nullptr, nullptr };
-                int linesize[4] = { rgb_stride, 0, 0, 0 };
-
+                int linesize[4] = { decoded->width * 3, 0,0,0 };
                 sws_scale(
-                    sws_ctx,
-                    decoded->data,
-                    decoded->linesize,
-                    0,
-                    decoded->height,
-                    dest,
-                    linesize);
+                    sws_ctx, decoded->data, decoded->linesize,
+                    0, decoded->height, dest, linesize);
+                video_widget->updateFrame(rgb_buffer);
 
-                video_widget.updateFrame(rgb_buffer);
-
-                // Clear
-                glViewport(0, 0, win_w, win_h);
+                // Draw
+                glViewport(0,0, (int)(1920*0.85), (int)(1080*0.85));
                 glMatrixMode(GL_PROJECTION);
                 glLoadIdentity();
-                glOrtho(0, win_w, win_h, 0, -1, 1);
+                glOrtho(0, (int)(1920*0.85), (int)(1080*0.85), 0, -1,1);
                 glMatrixMode(GL_MODELVIEW);
-                glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+                glClearColor(0.2f,0.3f,0.3f,1.0f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 glLoadIdentity();
 
@@ -119,23 +210,22 @@ int main() {
                 glfwPollEvents();
 
                 av_frame_unref(decoded);
-
-                std::cout << "Frame #" << frame_count++
-                          << " displayed size: "
-                          << decoded->width << "x" << decoded->height << std::endl;
+                frame_count++;
             }
         }
-        av_frame_unref(frame);
+
+        if (sws_ctx) sws_freeContext(sws_ctx);
+        if (rgb_buffer) delete[] rgb_buffer;
+        if (decoded) av_frame_free(&decoded);
+        if (video_widget) delete video_widget;
+
+        redecoder.close();
+        std::cout << "Client done." << std::endl;
+#ifdef _WIN32
+        closesocket(sock);
+#else
+        close(sock);
+#endif
+        return 0;
     }
-
-    delete[] rgb_buffer;
-    av_frame_free(&frame);
-    av_frame_free(&decoded);
-    sws_freeContext(sws_ctx);
-    decoder.close();
-    encoder.close();
-    redecoder.close();
-
-    std::cout << "Done." << std::endl;
-    return 0;
 }
