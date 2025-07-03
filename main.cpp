@@ -33,7 +33,6 @@ int main() {
         return -1;
     }
 
-    // Use your WindowClass
     WindowClass custom_window;
     if (custom_window.getErrorStatus()) {
         return -1;
@@ -41,12 +40,6 @@ int main() {
 
     WidgetManager widget_manager;
     MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
-
-    // Set up orthographic projection matching video size
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, decoder.getWidth(), decoder.getHeight(), 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
 
     // Create OpenGL texture
     GLuint tex_id;
@@ -124,17 +117,46 @@ int main() {
                     GL_UNSIGNED_BYTE,
                     rgb_buffer);
 
+                // Query window size
+                int win_w, win_h;
+                glfwGetFramebufferSize(custom_window.getWindow(), &win_w, &win_h);
+
+                // Compute scaling factor
+                float scale_x = static_cast<float>(win_w) / decoder.getWidth();
+                float scale_y = static_cast<float>(win_h) / decoder.getHeight();
+                float scale = std::min(1.0f, std::min(scale_x, scale_y));
+
+                // Compute scaled size
+                float draw_w = decoder.getWidth() * scale;
+                float draw_h = decoder.getHeight() * scale;
+
+                // Centering offsets
+                float offset_x = (win_w - draw_w) * 0.5f;
+                float offset_y = (win_h - draw_h) * 0.5f;
+
+                // Viewport and projection
+                glViewport(0, 0, win_w, win_h);
+                glMatrixMode(GL_PROJECTION);
+                glLoadIdentity();
+                glOrtho(0, win_w, win_h, 0, -1, 1);
+                glMatrixMode(GL_MODELVIEW);
+
+                // Clear
                 glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 glLoadIdentity();
 
+                // Draw quad
                 glEnable(GL_TEXTURE_2D);
+                glBindTexture(GL_TEXTURE_2D, tex_id);
+
                 glBegin(GL_QUADS);
-                glTexCoord2f(0.f, 0.f); glVertex2f(0.f, 0.f);
-                glTexCoord2f(1.f, 0.f); glVertex2f(decoder.getWidth(), 0.f);
-                glTexCoord2f(1.f, 1.f); glVertex2f(decoder.getWidth(), decoder.getHeight());
-                glTexCoord2f(0.f, 1.f); glVertex2f(0.f, decoder.getHeight());
+                glTexCoord2f(0.f, 0.f); glVertex2f(offset_x, offset_y);
+                glTexCoord2f(1.f, 0.f); glVertex2f(offset_x + draw_w, offset_y);
+                glTexCoord2f(1.f, 1.f); glVertex2f(offset_x + draw_w, offset_y + draw_h);
+                glTexCoord2f(0.f, 1.f); glVertex2f(offset_x, offset_y + draw_h);
                 glEnd();
+
                 glDisable(GL_TEXTURE_2D);
 
                 widget_manager.renderAll();
