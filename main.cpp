@@ -2,6 +2,7 @@
 #include "video_encoder.h"
 #include "video_redecoder.h"
 #include "ui.h"
+#include "video_widget.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
@@ -34,29 +35,10 @@ int main() {
     }
 
     WindowClass custom_window;
-    if (custom_window.getErrorStatus()) {
-        return -1;
-    }
+    if (custom_window.getErrorStatus()) return -1;
 
     WidgetManager widget_manager;
     MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
-
-    // Create OpenGL texture
-    GLuint tex_id;
-    glGenTextures(1, &tex_id);
-    glBindTexture(GL_TEXTURE_2D, tex_id);
-    glTexImage2D(
-        GL_TEXTURE_2D,
-        0,
-        GL_RGB,
-        decoder.getWidth(),
-        decoder.getHeight(),
-        0,
-        GL_RGB,
-        GL_UNSIGNED_BYTE,
-        nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     SwsContext* sws_ctx = sws_getContext(
         decoder.getWidth(),
@@ -87,6 +69,20 @@ int main() {
         return -1;
     }
 
+    // Create the VideoWidget centered and scaled
+    int win_w = 1920 * 0.85;
+    int win_h = 1080 * 0.85;
+    float scale_x = float(win_w) / decoder.getWidth();
+    float scale_y = float(win_h) / decoder.getHeight();
+    float scale = std::min(1.0f, std::min(scale_x, scale_y));
+    float draw_w = decoder.getWidth() * scale;
+    float draw_h = decoder.getHeight() * scale;
+    float offset_x = (win_w - draw_w) * 0.5f;
+    float offset_y = (win_h - draw_h) * 0.5f;
+
+    VideoWidget video_widget(offset_x, offset_y, draw_w, draw_h, decoder.getWidth(), decoder.getHeight());
+    widget_manager.addNewWidget(&video_widget);
+
     int frame_count = 0;
 
     while (!glfwWindowShouldClose(custom_window.getWindow()) && decoder.readFrame(frame)) {
@@ -105,59 +101,17 @@ int main() {
                     dest,
                     linesize);
 
-                glBindTexture(GL_TEXTURE_2D, tex_id);
-                glTexSubImage2D(
-                    GL_TEXTURE_2D,
-                    0,
-                    0,
-                    0,
-                    decoder.getWidth(),
-                    decoder.getHeight(),
-                    GL_RGB,
-                    GL_UNSIGNED_BYTE,
-                    rgb_buffer);
+                video_widget.updateFrame(rgb_buffer);
 
-                // Query window size
-                int win_w, win_h;
-                glfwGetFramebufferSize(custom_window.getWindow(), &win_w, &win_h);
-
-                // Compute scaling factor
-                float scale_x = static_cast<float>(win_w) / decoder.getWidth();
-                float scale_y = static_cast<float>(win_h) / decoder.getHeight();
-                float scale = std::min(1.0f, std::min(scale_x, scale_y));
-
-                // Compute scaled size
-                float draw_w = decoder.getWidth() * scale;
-                float draw_h = decoder.getHeight() * scale;
-
-                // Centering offsets
-                float offset_x = (win_w - draw_w) * 0.5f;
-                float offset_y = (win_h - draw_h) * 0.5f;
-
-                // Viewport and projection
+                // Clear
                 glViewport(0, 0, win_w, win_h);
                 glMatrixMode(GL_PROJECTION);
                 glLoadIdentity();
                 glOrtho(0, win_w, win_h, 0, -1, 1);
                 glMatrixMode(GL_MODELVIEW);
-
-                // Clear
                 glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 glLoadIdentity();
-
-                // Draw quad
-                glEnable(GL_TEXTURE_2D);
-                glBindTexture(GL_TEXTURE_2D, tex_id);
-
-                glBegin(GL_QUADS);
-                glTexCoord2f(0.f, 0.f); glVertex2f(offset_x, offset_y);
-                glTexCoord2f(1.f, 0.f); glVertex2f(offset_x + draw_w, offset_y);
-                glTexCoord2f(1.f, 1.f); glVertex2f(offset_x + draw_w, offset_y + draw_h);
-                glTexCoord2f(0.f, 1.f); glVertex2f(offset_x, offset_y + draw_h);
-                glEnd();
-
-                glDisable(GL_TEXTURE_2D);
 
                 widget_manager.renderAll();
 
@@ -181,7 +135,6 @@ int main() {
     decoder.close();
     encoder.close();
     redecoder.close();
-    glDeleteTextures(1, &tex_id);
 
     std::cout << "Done." << std::endl;
     return 0;

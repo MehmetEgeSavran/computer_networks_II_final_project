@@ -31,7 +31,8 @@ SRC = \
     ffmpeg/video_decoder.cpp \
     ffmpeg/video_encoder.cpp \
     ffmpeg/video_redecoder.cpp \
-    interface/ui.cpp
+    interface/ui.cpp \
+    interface/video_widget.cpp
 
 # Output executable
 OUT = main.exe
