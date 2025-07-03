@@ -5,7 +5,9 @@ CC = g++
 CFLAGS = \
     -ID:/msys64/mingw64/include \
     -I./ffmpeg \
-    -I./interface
+    -I./interface \
+    -I./network
+
 
 # FFmpeg libraries
 FFMPEG_LIBS = \
@@ -32,7 +34,10 @@ SRC = \
     ffmpeg/video_encoder.cpp \
     ffmpeg/video_redecoder.cpp \
     interface/ui.cpp \
-    interface/video_widget.cpp
+    interface/video_widget.cpp \
+    network/network_utils.cpp \
+    network/video_server.cpp \
+    network/video_client.cpp
 
 # Output executable
 OUT = main.exe
