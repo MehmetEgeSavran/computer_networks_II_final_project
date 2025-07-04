@@ -1,4 +1,5 @@
 #include "video_widget.h"
+#include "ui.h"
 #include <iostream>
 
 VideoWidget::VideoWidget(double x, double y, double w, double h, int videoW, int videoH)

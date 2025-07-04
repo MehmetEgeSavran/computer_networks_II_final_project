@@ -5,6 +5,7 @@
 #include "ui.h"
 #include <iostream>
 #include <vector>
+
 extern "C" {
 #include <libswscale/swscale.h>
 }
@@ -15,6 +16,9 @@ int runVideoClient(int sock) {
 
     WidgetManager widget_manager;
     MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
+
+    ButtonWidget myButton((int)(1080*0.65), (int)(1920*0.45), 80);
+    widget_manager.addNewWidget(&myButton);
 
     VideoReDecoder redecoder;
     redecoder.init(nullptr, 0);
@@ -47,7 +51,6 @@ int runVideoClient(int sock) {
                 float w = (float)decoded->width;
                 float h = (float)decoded->height;
                 video_widget = new VideoWidget(0, 0, w, h, (int)w, (int)h);
-                widget_manager.addNewWidget(video_widget);
             }
 
             uint8_t* dest[4] = { rgb_buffer, nullptr, nullptr, nullptr };
@@ -57,16 +60,21 @@ int runVideoClient(int sock) {
                 dest, linesize);
             video_widget->updateFrame(rgb_buffer);
 
-            glViewport(0,0, (int)(1920*0.85), (int)(1080*0.85));
+            glViewport(0, 0, (int)(1920 * 0.85), (int)(1080 * 0.85));
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
-            glOrtho(0, (int)(1920*0.85), (int)(1080*0.85), 0, -1, 1);
+            glOrtho(0, (int)(1920 * 0.85), (int)(1080 * 0.85), 0, -1, 1);
             glMatrixMode(GL_MODELVIEW);
-
-            glClearColor(0.2f,0.3f,0.3f,1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
             glLoadIdentity();
 
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glEnable(GL_TEXTURE_2D);
+            video_widget->render();
+            glDisable(GL_TEXTURE_2D);
+
+            glColor3f(1.0f, 1.0f, 1.0f);
             widget_manager.renderAll();
 
             glfwSwapBuffers(custom_window.getWindow());

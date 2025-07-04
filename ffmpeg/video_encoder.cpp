@@ -28,14 +28,12 @@ bool VideoEncoder::init(int width, int height, AVRational time_base) {
     enc_ctx->height = height;
     enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
-    // Use CRF mode instead of bitrate
     if (av_opt_set(enc_ctx->priv_data, "crf", "23", 0) < 0) {
         std::cerr << "Failed to set CRF.\n";
         return false;
     }
 
     enc_ctx->time_base = time_base;
-
     if (avcodec_open2(enc_ctx, encoder, nullptr) < 0) {
         std::cerr << "Failed to open encoder.\n";
         return false;

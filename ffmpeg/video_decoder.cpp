@@ -40,7 +40,6 @@ bool VideoDecoder::readFrame(AVFrame* out_frame) {
     while (true) {
         int ret = av_read_frame(fmt_ctx, packet);
         if (ret < 0) {
-            // Try flushing decoder
             ret = avcodec_send_packet(dec_ctx, nullptr);
             if (ret < 0) return false;
         } else {
@@ -56,11 +55,9 @@ bool VideoDecoder::readFrame(AVFrame* out_frame) {
             av_packet_unref(packet);
         }
 
-        // Keep receiving frames until we get one or no more
         while (true) {
             ret = avcodec_receive_frame(dec_ctx, out_frame);
             if (ret == AVERROR(EAGAIN)) {
-                // Need to read more packets
                 break;
             }
             if (ret == AVERROR_EOF) {
@@ -70,7 +67,6 @@ bool VideoDecoder::readFrame(AVFrame* out_frame) {
                 std::cerr << "Error during decoding.\n";
                 return false;
             }
-            // Got a frame
             return true;
         }
     }

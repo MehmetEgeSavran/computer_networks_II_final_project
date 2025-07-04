@@ -1,7 +1,7 @@
 #include "ui.h"
 #include <iostream>
+#include <cmath>
 
-// WindowClass
 WindowClass::WindowClass() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW." << std::endl;
@@ -31,7 +31,6 @@ WindowClass::~WindowClass() {
 GLFWwindow* WindowClass::getWindow() { return window; }
 bool WindowClass::getErrorStatus() { return WINDOW_CLASS_ERROR; }
 
-// WidgetClass
 WidgetClass::WidgetClass(double x, double y, double w, double h)
     : xpos(x), ypos(y), width(w), height(h) {}
 
@@ -55,7 +54,6 @@ bool WidgetClass::isPressed() const { return pressed; }
 std::vector<double> WidgetClass::getPos() { return {xpos, ypos}; }
 std::vector<double> WidgetClass::getDim() { return {height, width}; }
 
-// WidgetManager
 void WidgetManager::addNewWidget(WidgetClass* widget) {
     widgets.push_back(widget);
 }
@@ -70,7 +68,6 @@ void WidgetManager::handleMouseEvent(int button, int action, double x, double y)
     }
 }
 
-// MouseClass
 MouseClass::MouseClass(GLFWwindow* window, WidgetManager* manager)
     : parent_window(window), widget_manager(manager) {
     glfwSetWindowUserPointer(parent_window, this);
@@ -104,4 +101,42 @@ void MouseClass::mouseMoveCallback(GLFWwindow* window, double x, double y) {
         return;
     instance->xpos = x;
     instance->ypos = y;
+}
+
+ButtonWidget::ButtonWidget(double x, double y, double radius)
+    : WidgetClass(x - radius, y - radius, radius * 2, radius * 2), radius(radius) {}
+
+    void ButtonWidget::render() {
+    if (isPressed())
+        glColor3f(1.0f, 0.3f, 0.3f);
+    else
+        glColor3f(0.3f, 0.8f, 0.3f);
+
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(getPos().at(0) + radius, getPos().at(1) + radius);
+    const int segments = 50;
+    for (int i = 0; i <= segments; ++i) {
+        float angle = i * 2.0f * 3.1415926f / segments;
+        float dx = cosf(angle) * radius;
+        float dy = sinf(angle) * radius;
+        glVertex2f(getPos().at(0) + radius + dx, getPos().at(1) + radius + dy);
+    }
+    glEnd();
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+    }
+
+    void ButtonWidget::onMouseEvent(int button, int action, double mouse_x, double mouse_y) {
+    double cx = getPos().at(0) + radius;
+    double cy = getPos().at(1) + radius;
+    double dist = std::sqrt((mouse_x - cx)*(mouse_x - cx) + (mouse_y - cy)*(mouse_y - cy));
+    if (dist > radius)
+        return;
+
+    if (action == GLFW_PRESS) {
+        std::cout << "[ButtonWidget] Button pressed!" << std::endl;
+        WidgetClass::onMouseEvent(button, action, mouse_x, mouse_y);
+    } else if (action == GLFW_RELEASE) {
+        WidgetClass::onMouseEvent(button, action, mouse_x, mouse_y);
+    }
 }

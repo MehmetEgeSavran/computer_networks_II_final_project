@@ -3,7 +3,6 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 
-// Window wrapper
 class WindowClass {
 public:
     WindowClass();
@@ -15,7 +14,6 @@ private:
     GLFWwindow* window = nullptr;
 };
 
-// Abstract base widget
 class WidgetClass {
 public:
     WidgetClass(double x, double y, double w, double h);
@@ -31,7 +29,6 @@ protected:
     bool pressed = false;
 };
 
-// Widget manager
 class WidgetManager {
 public:
     void addNewWidget(WidgetClass* widget);
@@ -41,7 +38,6 @@ private:
     std::vector<WidgetClass*> widgets;
 };
 
-// Mouse input
 class MouseClass {
 public:
     MouseClass(GLFWwindow* window, WidgetManager* manager);
@@ -53,4 +49,15 @@ private:
     WidgetManager* widget_manager = nullptr;
     GLFWwindow* parent_window = nullptr;
     double xpos = 0.0, ypos = 0.0;
+};
+
+class ButtonWidget : public WidgetClass {
+public:
+    ButtonWidget(double x, double y, double radius);
+
+    void render() override;
+    void onMouseEvent(int button, int action, double mouse_x, double mouse_y) override;
+
+private:
+    double radius;
 };
