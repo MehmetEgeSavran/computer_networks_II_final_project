@@ -10,7 +10,6 @@
 #include <unistd.h>
 #endif
 
-// ----------------- WindowClass -----------------
 WindowClass::WindowClass() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW.\n";
@@ -40,7 +39,6 @@ WindowClass::~WindowClass() {
 GLFWwindow* WindowClass::getWindow() { return window; }
 bool WindowClass::getErrorStatus() { return WINDOW_CLASS_ERROR; }
 
-// ----------------- WidgetClass -----------------
 WidgetClass::WidgetClass(double x, double y, double w, double h)
     : x_position(x), y_position(y), width(w), height(h) {}
 
@@ -64,7 +62,6 @@ bool WidgetClass::isPressed() const { return pressed; }
 std::vector<double> WidgetClass::getPos() { return { x_position, y_position }; }
 std::vector<double> WidgetClass::getDim() { return { height, width }; }
 
-// ----------------- WidgetManager -----------------
 void WidgetManager::addNewWidget(WidgetClass* widget) {
     widgets.push_back(widget);
 }
@@ -79,7 +76,6 @@ void WidgetManager::handleMouseEvent(int button, int action, double x, double y)
     }
 }
 
-// ----------------- MouseClass -----------------
 MouseClass::MouseClass(GLFWwindow* window, WidgetManager* manager)
     : parent_window(window), widget_manager(manager) {
     glfwSetWindowUserPointer(parent_window, this);
@@ -111,7 +107,6 @@ void MouseClass::mouseMoveCallback(GLFWwindow* window, double x, double y) {
     instance->ypos = y;
 }
 
-// ----------------- ButtonWidget -----------------
 ButtonWidget::ButtonWidget(double x, double y, double radius, ButtonIconType icon, bool toggle, int socket_fd)
     : WidgetClass(x - radius, y - radius, radius * 2, radius * 2),
       radius(radius),
@@ -197,7 +192,6 @@ void ButtonWidget::onMouseEvent(int button, int action, double mouse_x, double m
     WidgetClass::onMouseEvent(button, action, mouse_x, mouse_y);
 }
 
-// ----------------- TeardownButtonWidget -----------------
 TeardownButtonWidget::TeardownButtonWidget(double x, double y, double radius, int socket_fd)
     : WidgetClass(x - radius, y - radius, radius * 2, radius * 2),
       radius(radius),
@@ -225,7 +219,6 @@ void TeardownButtonWidget::render() {
     }
     glEnd();
 
-    // Cross icon
     if (active) {
         glColor3f(1.0f, 1.0f, 1.0f);
         float cx = getPos().at(0) + radius;
@@ -235,10 +228,8 @@ void TeardownButtonWidget::render() {
 
         glLineWidth(thickness);
         glBegin(GL_LINES);
-        // Diagonal top-left to bottom-right
         glVertex2f(cx - s, cy - s);
         glVertex2f(cx + s, cy + s);
-        // Diagonal bottom-left to top-right
         glVertex2f(cx - s, cy + s);
         glVertex2f(cx + s, cy - s);
         glEnd();

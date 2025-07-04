@@ -3,7 +3,6 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 
-// ================== WindowClass ==================
 class WindowClass {
 public:
     WindowClass();
@@ -16,7 +15,6 @@ private:
     GLFWwindow* window = nullptr;
 };
 
-// ================== WidgetClass (Base) ==================
 class WidgetClass {
 public:
     WidgetClass(double x, double y, double w, double h);
@@ -35,7 +33,6 @@ protected:
     bool pressed = false;
 };
 
-// ================== WidgetManager ==================
 class WidgetManager {
 public:
     void addNewWidget(WidgetClass* widget);
@@ -46,7 +43,6 @@ private:
     std::vector<WidgetClass*> widgets;
 };
 
-// ================== MouseClass ==================
 class MouseClass {
 public:
     MouseClass(GLFWwindow* window, WidgetManager* manager);
@@ -62,7 +58,6 @@ private:
     double xpos = 0.0, ypos = 0.0;
 };
 
-// ================== ButtonWidget ==================
 enum class ButtonIconType {
     Play,
     Pause
@@ -82,7 +77,6 @@ private:
     int sock_fd;
 };
 
-// ----------------- TeardownButtonWidget -----------------
 class TeardownButtonWidget : public WidgetClass {
 public:
     TeardownButtonWidget(double x, double y, double radius, int socket_fd);

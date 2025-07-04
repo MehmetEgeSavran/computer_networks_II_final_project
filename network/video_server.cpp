@@ -59,9 +59,7 @@ int runVideoServer(int client_sock) {
 
     std::cout << "First frame sent. Waiting for PLAY command...\n";
 
-    // Main loop
     while (true) {
-        // Check for incoming control commands
 #ifdef _WIN32
         u_long avail = 0;
         ioctlsocket(client_sock, FIONREAD, &avail);
@@ -93,10 +91,7 @@ int runVideoServer(int client_sock) {
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
             continue;
         }
-
-        // Read next video frame
         if (!decoder.readFrame(frame)) {
-            // End of video, restart
             decoder.close();
             std::cout << "Reached end of video, restarting...\n";
             if (!decoder.open(video_path)) {
@@ -106,7 +101,6 @@ int runVideoServer(int client_sock) {
             continue;
         }
 
-        // Encode and send the frame
         std::vector<uint8_t> packet_data;
         if (encoder.encodeFrame(frame, packet_data)) {
             uint32_t size = htonl(static_cast<uint32_t>(packet_data.size()));
@@ -119,11 +113,9 @@ int runVideoServer(int client_sock) {
         av_frame_unref(frame);
     }
 
-    // Send end-of-stream marker (size = 0)
     uint32_t zero = 0;
     sendAll(client_sock, reinterpret_cast<uint8_t*>(&zero), 4);
 
-    // Cleanup
     av_frame_free(&frame);
     decoder.close();
     encoder.close();
