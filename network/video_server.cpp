@@ -13,21 +13,18 @@ extern "C" {
 int runVideoServer(int client_sock) {
     const std::string video_path = "D:\\visual_studio_codes\\computer_networks_final_project\\kitty.mp4";
 
-    // Initialize decoder
     VideoDecoder decoder;
     if (!decoder.open(video_path)) {
         std::cerr << "Unable to open video.\n";
         return -1;
     }
 
-    // Initialize encoder
     VideoEncoder encoder;
     if (!encoder.init(decoder.getWidth(), decoder.getHeight(), decoder.getTimeBase())) {
         std::cerr << "Unable to init encoder.\n";
         return -1;
     }
 
-    // Allocate frame
     AVFrame* frame = av_frame_alloc();
     if (!frame) {
         std::cerr << "Failed to allocate frame.\n";
@@ -38,7 +35,6 @@ int runVideoServer(int client_sock) {
 
     std::cout << "Server ready. Sending first frame...\n";
 
-    // Read and send the very first frame before waiting for commands
     if (decoder.readFrame(frame)) {
         std::vector<uint8_t> packet_data;
         if (encoder.encodeFrame(frame, packet_data)) {

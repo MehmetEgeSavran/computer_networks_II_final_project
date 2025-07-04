@@ -18,14 +18,14 @@ int main() {
     WSAStartup(MAKEWORD(2,2), &wsaData);
 #endif
 
-    std::cout << "Server (s) or Client (c)? ";
+    std::cout << "Choosee Your Prefered Network Side: (S/C) ";
     char mode;
     std::cin >> mode;
 
     const int PORT = 5000;
     int sock = -1, client_sock = -1;
 
-    if (mode == 's') {
+    if (mode == 's' || mode == 'S') {
         sock = socket(AF_INET, SOCK_STREAM, 0);
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
