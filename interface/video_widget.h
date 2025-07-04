@@ -7,10 +7,7 @@ class VideoWidget : public WidgetClass {
 public:
     VideoWidget(double x, double y, double w, double h, int videoW, int videoH);
     ~VideoWidget();
-
     void render() override;
-
-    // Update the internal OpenGL texture with new RGB frame data
     void updateFrame(const uint8_t* rgb_data);
 
 private:

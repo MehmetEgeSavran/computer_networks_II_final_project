@@ -4,12 +4,12 @@ bool sendAll(int sock, const uint8_t* data, int len) {
     int sent = 0;
     while (sent < len) {
 #ifdef _WIN32
-        int s = send(sock, (const char*)data + sent, len - sent, 0);
+        int send_index = send(sock, (const char*)data + sent, len - sent, 0);
 #else
-        int s = send(sock, data + sent, len - sent, 0);
+        int send_index = send(sock, data + sent, len - sent, 0);
 #endif
-        if (s <= 0) return false;
-        sent += s;
+        if (send_index <= 0) return false;
+        sent += send_index;
     }
     return true;
 }

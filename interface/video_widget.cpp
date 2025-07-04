@@ -25,10 +25,10 @@ void VideoWidget::render() {
     glBindTexture(GL_TEXTURE_2D, texture_id);
 
     glBegin(GL_QUADS);
-    glTexCoord2f(0.f, 0.f); glVertex2f(xpos, ypos);
-    glTexCoord2f(1.f, 0.f); glVertex2f(xpos + width, ypos);
-    glTexCoord2f(1.f, 1.f); glVertex2f(xpos + width, ypos + height);
-    glTexCoord2f(0.f, 1.f); glVertex2f(xpos, ypos + height);
+    glTexCoord2f(0.f, 0.f); glVertex2f(x_position, y_position);
+    glTexCoord2f(1.f, 0.f); glVertex2f(x_position + width, y_position);
+    glTexCoord2f(1.f, 1.f); glVertex2f(x_position + width, y_position + height);
+    glTexCoord2f(0.f, 1.f); glVertex2f(x_position, y_position + height);
     glEnd();
 
     glDisable(GL_TEXTURE_2D);

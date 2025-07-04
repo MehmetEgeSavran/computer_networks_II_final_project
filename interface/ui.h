@@ -31,7 +31,7 @@ public:
     std::vector<double> getDim();
 
 protected:
-    double xpos, ypos, width, height;
+    double x_position, y_position, width, height;
     bool pressed = false;
 };
 
@@ -70,7 +70,7 @@ enum class ButtonIconType {
 
 class ButtonWidget : public WidgetClass {
 public:
-    ButtonWidget(double x, double y, double radius, ButtonIconType icon, bool toggle);
+    ButtonWidget(double x, double y, double radius, ButtonIconType icon, bool toggle, int socket_fd);
 
     void render() override;
     void onMouseEvent(int button, int action, double mouse_x, double mouse_y) override;
@@ -79,4 +79,17 @@ private:
     double radius;
     ButtonIconType currentIcon;
     bool toggleOnClick;
+    int sock_fd;
+};
+
+// ----------------- TeardownButtonWidget -----------------
+class TeardownButtonWidget : public WidgetClass {
+public:
+    TeardownButtonWidget(double x, double y, double radius, int socket_fd);
+    void render() override;
+    void onMouseEvent(int button, int action, double mouse_x, double mouse_y) override;
+private:
+    double radius;
+    int sock_fd;
+    bool active;
 };
