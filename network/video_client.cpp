@@ -17,8 +17,14 @@ int runVideoClient(int sock) {
     WidgetManager widget_manager;
     MouseClass custom_mouse(custom_window.getWindow(), &widget_manager);
 
-    ButtonWidget myButton((int)(1080*0.65), (int)(1920*0.45), 80);
-    widget_manager.addNewWidget(&myButton);
+    ButtonWidget play_button(
+        1920 * 0.45,
+        1080 * 0.6,
+        80,
+        ButtonIconType::Play,
+        true
+    );
+    widget_manager.addNewWidget(&play_button);
 
     VideoReDecoder redecoder;
     redecoder.init(nullptr, 0);
@@ -48,8 +54,8 @@ int runVideoClient(int sock) {
                     SWS_BILINEAR, nullptr, nullptr, nullptr);
                 rgb_buffer = new uint8_t[decoded->width * decoded->height * 3];
 
-                float w = (float)decoded->width;
-                float h = (float)decoded->height;
+                float w = static_cast<float>(decoded->width);
+                float h = static_cast<float>(decoded->height);
                 video_widget = new VideoWidget(0, 0, w, h, (int)w, (int)h);
             }
 
@@ -74,7 +80,6 @@ int runVideoClient(int sock) {
             video_widget->render();
             glDisable(GL_TEXTURE_2D);
 
-            glColor3f(1.0f, 1.0f, 1.0f);
             widget_manager.renderAll();
 
             glfwSwapBuffers(custom_window.getWindow());
