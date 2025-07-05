@@ -18,53 +18,55 @@ int main() {
     WSAStartup(MAKEWORD(2,2), &wsaData);
 #endif
 
+    //The code initially asks for user to choose their server/client side of the app.
+    //The decision changes the flow of the program but for overall integretiy both server and client originates from the same side
     std::cout << "Choosee Your Prefered Network Side: (S/C) ";
-    char mode;
-    std::cin >> mode;
+    char mode_in_use;
+    std::cin >> mode_in_use;
 
-    const int PORT = 5000;
-    int sock = -1, client_sock = -1;
+    const int port_in_use = 5678;   //port chosen to be at random, sinde the program will be running on local host 127.0.0.1
+    int server_side_socket = -1, client_side_socket = -1;
 
-    if (mode == 's' || mode == 'S') {
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = INADDR_ANY;
-        addr.sin_port = htons(PORT);
+    if (mode_in_use == 's' || mode_in_use == 'S') {
+        server_side_socket = socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in address_in_use{};
+        address_in_use.sin_family = AF_INET;
+        address_in_use.sin_addr.s_addr = INADDR_ANY;
+        address_in_use.sin_port = htons(port_in_use);
 
-        bind(sock, (sockaddr*)&addr, sizeof(addr));
-        listen(sock, 1);
+        bind(server_side_socket, (sockaddr*)&address_in_use, sizeof(address_in_use));
+        listen(server_side_socket, 1);
         std::cout << "Waiting for connection..." << std::endl;
-        client_sock = accept(sock, nullptr, nullptr);
+        client_side_socket = accept(server_side_socket, nullptr, nullptr);
         std::cout << "Client connected." << std::endl;
 
-        runVideoServer(client_sock);
+        runVideoServer(client_side_socket);
 
 #ifdef _WIN32
-        closesocket(sock);
-        closesocket(client_sock);
+        closesocket(server_side_socket);
+        closesocket(client_side_socket);
 #else
         close(sock);
         close(client_sock);
 #endif
     } else {
-        sock = socket(AF_INET, SOCK_STREAM, 0);
+        server_side_socket = socket(AF_INET, SOCK_STREAM, 0);
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(PORT);
+        addr.sin_port = htons(port_in_use);
         addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
         std::cout << "Connecting..." << std::endl;
-        if (connect(sock, (sockaddr*)&addr, sizeof(addr)) < 0) {
+        if (connect(server_side_socket, (sockaddr*)&addr, sizeof(addr)) < 0) {
             std::cerr << "Failed to connect." << std::endl;
             return -1;
         }
         std::cout << "Connected." << std::endl;
 
-        runVideoClient(sock);
+        runVideoClient(server_side_socket);
 
 #ifdef _WIN32
-        closesocket(sock);
+        closesocket(server_side_socket);
 #else
         close(sock);
 #endif

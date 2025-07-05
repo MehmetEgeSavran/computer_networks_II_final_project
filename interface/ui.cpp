@@ -10,13 +10,16 @@
 #include <unistd.h>
 #endif
 
+#define PI 3.1415926f
+
 WindowClass::WindowClass() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW.\n";
         WINDOW_CLASS_ERROR = true;
         return;
     }
-    window = glfwCreateWindow(1920 * 0.85, 1080 * 0.85, "OpenGL Window", nullptr, nullptr);
+    //the window resolution here was originally set to 1920:1080 but it is later changed to *0.85 for easier time at debugging
+    window = glfwCreateWindow(1920 * 0.85, 1080 * 0.85, "OpenGL Window", nullptr, nullptr); 
     if (!window) {
         std::cerr << "Failed to create GLFW window.\n";
         glfwTerminate();
@@ -66,13 +69,13 @@ void WidgetManager::addNewWidget(WidgetClass* widget) {
     widgets.push_back(widget);
 }
 void WidgetManager::renderAll() {
-    for (auto w : widgets) {
-        w->render();
+    for (auto widget_element : widgets) {
+        widget_element->render();
     }
 }
 void WidgetManager::handleMouseEvent(int button, int action, double x, double y) {
-    for (auto w : widgets) {
-        w->onMouseEvent(button, action, x, y);
+    for (auto widget_element : widgets) {
+        widget_element->onMouseEvent(button, action, x, y);
     }
 }
 
@@ -83,7 +86,6 @@ MouseClass::MouseClass(GLFWwindow* window, WidgetManager* manager)
     glfwSetMouseButtonCallback(parent_window, mousePressCallback);
     glfwSetCursorPosCallback(parent_window, mouseMoveCallback);
 }
-
 MouseClass::~MouseClass() {}
 
 void MouseClass::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -91,7 +93,6 @@ void MouseClass::keyCallback(GLFWwindow* window, int key, int scancode, int acti
         glfwSetWindowShouldClose(window, true);
     }
 }
-
 void MouseClass::mousePressCallback(GLFWwindow* window, int button, int action, int mods) {
     MouseClass* instance = static_cast<MouseClass*>(glfwGetWindowUserPointer(window));
     if (!instance) return;
@@ -99,91 +100,86 @@ void MouseClass::mousePressCallback(GLFWwindow* window, int button, int action, 
         instance->widget_manager->handleMouseEvent(button, action, instance->xpos, instance->ypos);
     }
 }
-
 void MouseClass::mouseMoveCallback(GLFWwindow* window, double x, double y) {
     MouseClass* instance = static_cast<MouseClass*>(glfwGetWindowUserPointer(window));
     if (!instance) return;
     instance->xpos = x;
     instance->ypos = y;
 }
-
 ButtonWidget::ButtonWidget(double x, double y, double radius, ButtonIconType icon, bool toggle, int socket_fd)
     : WidgetClass(x - radius, y - radius, radius * 2, radius * 2),
       radius(radius),
-      currentIcon(icon),
+      current_icon(icon),
       toggleOnClick(toggle),
       sock_fd(socket_fd) {}
 
 void ButtonWidget::render() {
     if (isPressed())
-        glColor3f(1.0f, 0.3f, 0.3f);
+        glColor3f(1.0f, 0.3f, 0.3f);    //button colors change on action both as a debugging method and as a feature
     else
         glColor3f(0.3f, 0.8f, 0.3f);
 
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(getPos().at(0) + radius, getPos().at(1) + radius);
     const int segments = 50;
-    for (int i = 0; i <= segments; ++i) {
-        float angle = i * 2.0f * 3.1415926f / segments;
-        float dx = cosf(angle) * radius;
-        float dy = sinf(angle) * radius;
-        glVertex2f(getPos().at(0) + radius + dx, getPos().at(1) + radius + dy);
+    for (int index = 0; index <= segments; ++index) {
+        float angle = index * 2.0f * PI / segments;
+        float differential_x = cosf(angle) * radius;
+        float differential_y = sinf(angle) * radius;
+        glVertex2f(getPos().at(0) + radius + differential_x, getPos().at(1) + radius + differential_y);
     }
     glEnd();
-
     glColor3f(1.0f, 1.0f, 1.0f);
-    float cx = getPos().at(0) + radius;
-    float cy = getPos().at(1) + radius;
-
-    if (currentIcon == ButtonIconType::Play) {
-        float s = radius * 0.6f;
+    float corner_x = getPos().at(0) + radius;
+    float corner_y = getPos().at(1) + radius;
+    if (current_icon == ButtonIconType::Play) {
+        float alignment_variable = radius * 0.6f;
         glBegin(GL_TRIANGLES);
-        glVertex2f(cx - s * 0.4f, cy - s);
-        glVertex2f(cx - s * 0.4f, cy + s);
-        glVertex2f(cx + s * 0.6f, cy);
+        glVertex2f(corner_x - alignment_variable * 0.4f, corner_y - alignment_variable);
+        glVertex2f(corner_x - alignment_variable * 0.4f, corner_y + alignment_variable);
+        glVertex2f(corner_x + alignment_variable * 0.6f, corner_y);
         glEnd();
-    } else if (currentIcon == ButtonIconType::Pause) {
-        float w = radius * 0.2f;
-        float h = radius * 0.7f;
+    } else if (current_icon == ButtonIconType::Pause) {
+        float pause_icon_width = radius * 0.2f;
+        float pause_icon_height = radius * 0.7f;
         glBegin(GL_QUADS);
         
-        glVertex2f(cx - w - w, cy - h);
-        glVertex2f(cx - w, cy - h);
-        glVertex2f(cx - w, cy + h);
-        glVertex2f(cx - w - w, cy + h);
+        glVertex2f(corner_x - pause_icon_width - pause_icon_width, corner_y - pause_icon_height);
+        glVertex2f(corner_x - pause_icon_width, corner_y - pause_icon_height);
+        glVertex2f(corner_x - pause_icon_width, corner_y + pause_icon_height);
+        glVertex2f(corner_x - pause_icon_width - pause_icon_width, corner_y + pause_icon_height);
         
-        glVertex2f(cx + w, cy - h);
-        glVertex2f(cx + w + w, cy - h);
-        glVertex2f(cx + w + w, cy + h);
-        glVertex2f(cx + w, cy + h);
+        glVertex2f(corner_x + pause_icon_width, corner_y - pause_icon_height);
+        glVertex2f(corner_x + pause_icon_width + pause_icon_width, corner_y - pause_icon_height);
+        glVertex2f(corner_x + pause_icon_width + pause_icon_width, corner_y + pause_icon_height);
+        glVertex2f(corner_x + pause_icon_width, corner_y + pause_icon_height);
         glEnd();
     }
 }
 
 void ButtonWidget::onMouseEvent(int button, int action, double mouse_x, double mouse_y) {
-    double cx = getPos().at(0) + radius;
-    double cy = getPos().at(1) + radius;
-    double dist = std::sqrt((mouse_x - cx)*(mouse_x - cx) + (mouse_y - cy)*(mouse_y - cy));
-    if (dist > radius)
+    double corner_x = getPos().at(0) + radius;
+    double corner_y = getPos().at(1) + radius;
+    double distance = std::sqrt((mouse_x - corner_x)*(mouse_x - corner_x) + (mouse_y - corner_y)*(mouse_y - corner_y));
+    if (distance > radius)
         return;
 
     if (action == GLFW_PRESS) {
         std::cout << "[ButtonWidget] Button pressed!" << std::endl;
         if (toggleOnClick) {
-            currentIcon = (currentIcon == ButtonIconType::Play)
+            current_icon = (current_icon == ButtonIconType::Play)
                 ? ButtonIconType::Pause
                 : ButtonIconType::Play;
 
-            char cmd = (currentIcon == ButtonIconType::Play) ? 'P' : 'S';
+            char debug_char = (current_icon == ButtonIconType::Play) ? 'P' : 'S';
 
-            int ret = ::send(sock_fd, &cmd, 1, 0);
-            if (ret < 0) {
+            int return_value = ::send(sock_fd, &debug_char, 1, 0);
+            if (return_value < 0) {
                 std::cerr << "[ButtonWidget] Failed to send command.\n";
             } else {
-                std::cout << "[ButtonWidget] Sent command '" << cmd << "' to server.\n";
+                std::cout << "[ButtonWidget] Sent command '" << debug_char << "' to server.\n";
             }
-
-            if (currentIcon == ButtonIconType::Play)
+            if (current_icon == ButtonIconType::Play)
                 std::cout << "[ButtonWidget] State changed to PLAY\n";
             else
                 std::cout << "[ButtonWidget] State changed to PAUSE\n";
@@ -199,7 +195,6 @@ TeardownButtonWidget::TeardownButtonWidget(double x, double y, double radius, in
       active(true) {}
 
 void TeardownButtonWidget::render() {
-    
     if (!active) {
         glColor3f(0.4f, 0.4f, 0.4f);
     } else if (isPressed()) {
@@ -207,31 +202,30 @@ void TeardownButtonWidget::render() {
     } else {
         glColor3f(0.8f, 0.1f, 0.1f);
     }
-
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(getPos().at(0) + radius, getPos().at(1) + radius);
     const int segments = 50;
-    for (int i = 0; i <= segments; ++i) {
-        float angle = i * 2.0f * 3.1415926f / segments;
-        float dx = cosf(angle) * radius;
+    for (int index = 0; index <= segments; ++index) {
+        float angle = index * 2.0f * PI / segments;
+        float differential_x = cosf(angle) * radius;
         float dy = sinf(angle) * radius;
-        glVertex2f(getPos().at(0) + radius + dx, getPos().at(1) + radius + dy);
+        glVertex2f(getPos().at(0) + radius + differential_x, getPos().at(1) + radius + dy);
     }
     glEnd();
 
     if (active) {
         glColor3f(1.0f, 1.0f, 1.0f);
-        float cx = getPos().at(0) + radius;
-        float cy = getPos().at(1) + radius;
-        float s = radius * 0.5f;
+        float corner_x = getPos().at(0) + radius;
+        float corner_y = getPos().at(1) + radius;
+        float half_radial_distance = radius * 0.5f;
         float thickness = 3.0f;
 
         glLineWidth(thickness);
         glBegin(GL_LINES);
-        glVertex2f(cx - s, cy - s);
-        glVertex2f(cx + s, cy + s);
-        glVertex2f(cx - s, cy + s);
-        glVertex2f(cx + s, cy - s);
+        glVertex2f(corner_x - half_radial_distance, corner_y - half_radial_distance);
+        glVertex2f(corner_x + half_radial_distance, corner_y + half_radial_distance);
+        glVertex2f(corner_x - half_radial_distance, corner_y + half_radial_distance);
+        glVertex2f(corner_x + half_radial_distance, corner_y - half_radial_distance);
         glEnd();
         glLineWidth(1.0f);
     }
@@ -241,13 +235,11 @@ void TeardownButtonWidget::render() {
 void TeardownButtonWidget::onMouseEvent(int button, int action, double mouse_x, double mouse_y) {
     if (!active)
         return;
-
-    double cx = getPos().at(0) + radius;
-    double cy = getPos().at(1) + radius;
-    double dist = std::sqrt((mouse_x - cx)*(mouse_x - cx) + (mouse_y - cy)*(mouse_y - cy));
-    if (dist > radius)
+    double corner_x = getPos().at(0) + radius;
+    double corner_y = getPos().at(1) + radius;
+    double distance = std::sqrt((mouse_x - corner_x)*(mouse_x - corner_x) + (mouse_y - corner_y)*(mouse_y - corner_y));
+    if (distance > radius)
         return;
-
     if (action == GLFW_PRESS) {
         std::cout << "[TeardownButtonWidget] Button pressed - tearing down connection.\n";
 
@@ -256,9 +248,7 @@ void TeardownButtonWidget::onMouseEvent(int button, int action, double mouse_x, 
 #else
         ::close(sock_fd);
 #endif
-
         active = false;
     }
-
     WidgetClass::onMouseEvent(button, action, mouse_x, mouse_y);
 }

@@ -15,5 +15,5 @@ public:
     void close();
 
 private:
-    AVCodecContext* dec_ctx = nullptr;
+    AVCodecContext* decoder_context = nullptr;
 };

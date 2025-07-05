@@ -1,11 +1,12 @@
 #pragma once
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libavcodec/avcodec.h>
 }
-
 #include <string>
 
+//video decoder class
+//the decoder&encoder and redecoder classes could have been built with a same base class, but this approach seemed less bloated
 class VideoDecoder {
 public:
     VideoDecoder();
@@ -20,8 +21,8 @@ public:
     AVRational getTimeBase() const { return time_base; }
 
 private:
-    AVFormatContext* fmt_ctx = nullptr;
-    AVCodecContext* dec_ctx = nullptr;
+    AVFormatContext* format_context = nullptr;
+    AVCodecContext* decoder_context = nullptr;
     int video_stream_idx = -1;
     AVPacket* packet = nullptr;
 

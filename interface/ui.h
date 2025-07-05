@@ -72,7 +72,7 @@ public:
 
 private:
     double radius;
-    ButtonIconType currentIcon;
+    ButtonIconType current_icon;
     bool toggleOnClick;
     int sock_fd;
 };
